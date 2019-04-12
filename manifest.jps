@@ -53,4 +53,4 @@ onInstall:
       startPage: https://${response.env.domain}        
 startPage: ${globals.startPage}
 success: |
-  Enjoy with OpenLiberty by URL: [${globals.startPage}](${globals.startPage}) 
+  Enjoy with Open Liberty by URL: [${globals.startPage}](${globals.startPage}) 
