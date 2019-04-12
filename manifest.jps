@@ -1,0 +1,56 @@
+version: 1.1
+type: install
+name: Open Liberty in Kubernetes
+baseUrl: https://github.com/jelastic-jps/openliberty/raw/master
+logo: /images/open-liberty-logo.png
+description: Example of Open Liberty deployment on top of Kubernetes cluster. 
+
+settings:
+  fields:
+    - caption: Environment
+      type: envname
+      name: envName
+      dependsOn: region
+      randomName: true
+      showFullDomain: true
+      required: true
+
+    - caption: Display Name
+      type: string
+      name: dispName
+      default: Open Liberty
+      required: true
+
+    - caption: Region
+      type: regionlist
+      name: region
+      disableInactive: true
+      selectFirstAvailable: true
+      filter:
+        type: ["vz7"]
+        isActive: true      
+
+onInstall:
+  - script: return {result:0, envGroups:eval('(' + MANIFEST + ')').envGroups}  
+  - install: 
+      jps: https://raw.githubusercontent.com/jelastic-jps/kubernetes/master/manifest.jps?_r=${fn.random}
+      envName: ${settings.envName}
+      envGroups: ${response.envGroups}
+      region: ${settings.region}
+      displayName: ${settings.dispName}
+      settings:
+        worker: 2
+        storage: false
+        deploy: cmd
+        cmd: |-
+          helm repo add ibm-charts https://raw.githubusercontent.com/IBM/charts/master/repo/stable/
+          helm install --name default --set autoscaling.enabled=true --set autoscaling.minReplicas=2 ibm-charts/ibm-open-liberty --debug
+          kubectl apply -f https://raw.githubusercontent.com/jelastic-jps/kubernetes/master/addons/openliberty.yaml 
+          
+  - env.control.GetEnvInfo:
+      envName: ${settings.envName}
+  - setGlobals:
+      startPage: https://${response.env.domain}        
+startPage: ${globals.startPage}
+success: |
+  Enjoy with OpenLiberty by URL: [${globals.startPage}](${globals.startPage}) 
