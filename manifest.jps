@@ -31,13 +31,14 @@ settings:
         isActive: true      
 
 onInstall:
-  - script: return {result:0, envGroups:eval('(' + MANIFEST + ')').envGroups}  
+  - script: return {result:0, envGroups:eval('(' + MANIFEST + ')').envGroups, ssl:jelastic.billing.account.GetQuotas('environment.jelasticssl.enabled')}  
   - install: 
       jps: https://raw.githubusercontent.com/jelastic-jps/kubernetes/master/manifest.jps?_r=${fn.random}
       envName: ${settings.envName}
       envGroups: ${response.envGroups}
       region: ${settings.region}
       displayName: ${settings.dispName}
+      ssl: ${response.ssl}
       settings:
         worker: 2
         storage: false
@@ -46,11 +47,12 @@ onInstall:
           helm repo add ibm-charts https://raw.githubusercontent.com/IBM/charts/master/repo/stable/
           helm install --name default --set autoscaling.enabled=true --set autoscaling.minReplicas=2 ibm-charts/ibm-open-liberty --debug
           kubectl apply -f https://raw.githubusercontent.com/jelastic-jps/kubernetes/master/addons/openliberty.yaml 
-          
-  - env.control.GetEnvInfo:
-      envName: ${settings.envName}
+
+  - script: |
+      var resp = jelastic.env.control.GetEnvInfo("${settings.envName}", session);
+      return {result:0, startPage: "http" + (resp.env.sslstate ? "s" : "") + "://" + resp.env.domain}      
   - setGlobals:
-      startPage: https://${response.env.domain}        
+        startPage: ${response.startPage}        
 startPage: ${globals.startPage}
 success: |
-  Enjoy with Open Liberty by URL: [${globals.startPage}](${globals.startPage}) 
+  Enjoy with OpenLiberty by URL: [${globals.startPage}](${globals.startPage}) 
