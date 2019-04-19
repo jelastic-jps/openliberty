@@ -31,7 +31,7 @@ settings:
         isActive: true      
 
 onInstall:
-  - script: return {result:0, envGroups:eval('(' + MANIFEST + ')').envGroups, ssl:jelastic.billing.account.GetQuotas('environment.jelasticssl.enabled')}  
+  - script: return {result:0, envGroups:eval('(' + MANIFEST + ')').envGroups, ssl:!!jelastic.billing.account.GetQuotas('environment.jelasticssl.enabled').array[0].value}  
   - install: 
       jps: https://raw.githubusercontent.com/jelastic-jps/kubernetes/master/manifest.jps?_r=${fn.random}
       envName: ${settings.envName}
