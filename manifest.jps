@@ -1,13 +1,41 @@
-version: 1.1
 type: install
+id: openliberty-in-k8s
 name: Open Liberty in Kubernetes
 baseUrl: https://github.com/jelastic-jps/openliberty/raw/master
 logo: /images/open-liberty-logo.png
-description: Example of Open Liberty deployment on top of Kubernetes cluster. 
+description: 
+  Open Liberty is an open source framework for building fast and efficient cloud-native Java microservices empowered by features from MicroProfile and Jakarta EE. 
+homepage: https://openliberty.io/
+onBeforeInit: scripts/onbeforeinit.js
 
 settings:
   fields:
-    - caption: Environment
+    - name: version
+      type: list
+      caption: Open Liberty Version 
+      width: 400
+
+    - name: displayfield
+      type: displayfield
+      caption: Kubernetes Topology
+
+    - name: topo
+      type: radio-fieldset
+      values:
+          - value: 0-dev
+            caption: '<b>Development:</b> one master (1) and one scalable worker (1+)'
+          - value: 1-prod
+            caption: '<b>Production:</b> multi master (3) with API balancers (2+) and scalable workers (2+)'
+      default: 0-dev
+      
+    - caption: Display Name
+      type: string
+      name: displayName
+      default: Open Liberty in Kubernetes
+      required: true
+      width: 400
+
+    - caption: Env Name  
       type: envname
       name: envName
       dependsOn: region
@@ -15,44 +43,41 @@ settings:
       showFullDomain: true
       required: true
 
-    - caption: Display Name
-      type: string
-      name: dispName
-      default: Open Liberty
-      required: true
-
     - caption: Region
       type: regionlist
       name: region
       disableInactive: true
       selectFirstAvailable: true
+      width: 200
       filter:
         type: ["vz7"]
-        isActive: true      
-
+        isActive: true
+ 
 onInstall:
-  - script: return {result:0, envGroups:eval('(' + MANIFEST + ')').envGroups, ssl:!!jelastic.billing.account.GetQuotas('environment.jelasticssl.enabled').array[0].value}  
+  - script: return {result:0, envGroups:eval('(' + MANIFEST + ')').envGroups, ssl:!!jelastic.billing.account.GetQuotas('environment.jelasticssl.enabled').array[0].value}    
   - install: 
-      jps: https://raw.githubusercontent.com/jelastic-jps/kubernetes/master/manifest.jps?_r=${fn.random}
+      jps: https://github.com/jelastic-jps/kubernetes/blob/v1.17.12/manifest.jps
       envName: ${settings.envName}
       envGroups: ${response.envGroups}
-      region: ${settings.region}
-      displayName: ${settings.dispName}
+      displayName: ${settings.displayName}
       ssl: ${response.ssl}
+      region: ${settings.region}
       settings:
-        worker: 2
-        storage: false
+        topo: ${settings.topo}
         deploy: cmd
         cmd: |-
-          helm repo add ibm-charts https://raw.githubusercontent.com/IBM/charts/master/repo/stable/
-          helm install --name default --set autoscaling.enabled=true --set autoscaling.minReplicas=2 ibm-charts/ibm-open-liberty --debug
-          kubectl apply -f https://raw.githubusercontent.com/jelastic-jps/kubernetes/master/addons/openliberty.yaml 
-
+          OPERATOR_NAMESPACE=open-liberty
+          kubectl create namespace "$OPERATOR_NAMESPACE"
+          kubectl apply -f https://raw.githubusercontent.com/OpenLiberty/open-liberty-operator/master/deploy/releases/${settings.version}/openliberty-app-crd.yaml
+          curl -L https://raw.githubusercontent.com/OpenLiberty/open-liberty-operator/master/deploy/releases/${settings.version}/openliberty-app-cluster-rbac.yaml | sed -e "s/OPEN_LIBERTY_OPERATOR_NAMESPACE/${OPERATOR_NAMESPACE}/"  | kubectl apply -f -
+          curl -L https://raw.githubusercontent.com/OpenLiberty/open-liberty-operator/master/deploy/releases/${settings.version}/openliberty-app-operator.yaml  | sed -e "s/OPEN_LIBERTY_WATCH_NAMESPACE/${OPERATOR_NAMESPACE}/"  | kubectl apply -n ${OPERATOR_NAMESPACE} -f -
+          kubectl apply -f https://raw.githubusercontent.com/jelastic-jps/kubernetes/v1.17.12/addons/open-liberty.yaml
   - script: |
       var resp = jelastic.env.control.GetEnvInfo("${settings.envName}", session);
       return {result:0, startPage: "http" + (resp.env.sslstate ? "s" : "") + "://" + resp.env.domain}      
   - setGlobals:
-        startPage: ${response.startPage}        
+        startPage: ${response.startPage}  
 startPage: ${globals.startPage}
 success: |
-  Enjoy with OpenLiberty by URL: [${globals.startPage}](${globals.startPage}) 
+  Enjoy your Open Liberty at [${globals.startPage}](${globals.startPage}) 
+        
