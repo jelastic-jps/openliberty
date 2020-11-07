@@ -42,7 +42,7 @@ function exec(method, params) {
             response = response + line;
         }
     } else {
-        error = "ERROR: " + method.getStatusLine() + " -> user:" + user + " token:" + token + " repo:" + repo;
+        error = "ERROR: " + method.getStatusLine() + " -> user:" + user + " token:" + token;
         if (status == 401) error = "Wrong username or/and token. Please, double check your entries.";
         result = status, type = "error", response = null;
     }
