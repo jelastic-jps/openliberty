@@ -7,7 +7,7 @@ import com.hivext.api.core.utils.JSONUtils;
 import java.io.InputStreamReader;
 import java.io.BufferedReader;
 
-var user = "jpublictoken", token = "787226f960b4f7199a4d2cd443fde1591950df79", client = new HttpClient();  
+var user = "jpublictoken", token = "a0c3aad3b0f85e2fa747003ad8106621b6deee5b", client = new HttpClient();  
 var creds = new UsernamePasswordCredentials(user, token);
 client.getParams().setAuthenticationPreemptive(true);
 client.getState().setCredentials(AuthScope.ANY, creds);
