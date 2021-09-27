@@ -23,9 +23,9 @@ settings:
       type: radio-fieldset
       values:
           - value: 0-dev
-            caption: '<b>Development:</b> one master (1) and one scalable worker (1+)'
+            caption: '<b>Development:</b> one control-plane (1) and one scalable worker (1+)'
           - value: 1-prod
-            caption: '<b>Production:</b> multi master (3) with API balancers (2+) and scalable workers (2+)'
+            caption: '<b>Production:</b> multi control-plane (3) with API balancers (2+) and scalable workers (2+)'
       default: 0-dev
       
     - caption: Display Name
@@ -56,7 +56,7 @@ settings:
 onInstall:
   - script: return {result:0, envGroups:eval('(' + MANIFEST + ')').envGroups, ssl:!!jelastic.billing.account.GetQuotas('environment.jelasticssl.enabled').array[0].value}    
   - install: 
-      jps: https://github.com/jelastic-jps/kubernetes/blob/v1.18.10/manifest.jps
+      jps: https://github.com/jelastic-jps/kubernetes/blob/v1.21.4/manifest.jps
       envName: ${settings.envName}
       envGroups: ${response.envGroups}
       displayName: ${settings.displayName}
@@ -71,7 +71,7 @@ onInstall:
           kubectl apply -f https://raw.githubusercontent.com/OpenLiberty/open-liberty-operator/master/deploy/releases/${settings.version}/openliberty-app-crd.yaml
           curl -L https://raw.githubusercontent.com/OpenLiberty/open-liberty-operator/master/deploy/releases/${settings.version}/openliberty-app-cluster-rbac.yaml | sed -e "s/OPEN_LIBERTY_OPERATOR_NAMESPACE/${OPERATOR_NAMESPACE}/"  | kubectl apply -f -
           curl -L https://raw.githubusercontent.com/OpenLiberty/open-liberty-operator/master/deploy/releases/${settings.version}/openliberty-app-operator.yaml  | sed -e "s/OPEN_LIBERTY_WATCH_NAMESPACE/${OPERATOR_NAMESPACE}/"  | kubectl apply -n ${OPERATOR_NAMESPACE} -f -
-          kubectl apply -f https://raw.githubusercontent.com/jelastic-jps/kubernetes/v1.18.10/addons/open-liberty.yaml
+          kubectl apply -f https://raw.githubusercontent.com/jelastic-jps/kubernetes/v1.21.4/addons/open-liberty.yaml
   - script: |
       var resp = jelastic.env.control.GetEnvInfo("${settings.envName}", session);
       return {result:0, startPage: "http" + (resp.env.sslstate ? "s" : "") + "://" + resp.env.domain}      
