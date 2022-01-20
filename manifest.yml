@@ -56,7 +56,7 @@ settings:
 onInstall:
   - script: return {result:0, envGroups:eval('(' + MANIFEST + ')').envGroups, ssl:!!jelastic.billing.account.GetQuotas('environment.jelasticssl.enabled').array[0].value}    
   - install: 
-      jps: https://raw.githubusercontent.com/jelastic-jps/kubernetes/v1.21.4/manifest.jps
+      jps: https://raw.githubusercontent.com/jelastic-jps/kubernetes/v1.21.6/manifest.jps
       envName: ${settings.envName}
       envGroups: ${response.envGroups}
       displayName: ${settings.displayName}
@@ -66,12 +66,23 @@ onInstall:
         topo: ${settings.topo}
         deploy: cmd
         cmd: |-
+          verlte() { [  "$1" = "`echo -e "$1\n$2" | sort -V | head -n1`" ]; }
+          verlt() {  [ "$1" = "$2" ] && return 1 || verlte $1 $2; }
+
           OPERATOR_NAMESPACE=open-liberty
           kubectl create namespace "$OPERATOR_NAMESPACE"
-          kubectl apply -f https://raw.githubusercontent.com/OpenLiberty/open-liberty-operator/master/deploy/releases/${settings.version}/openliberty-app-crd.yaml
-          curl -L https://raw.githubusercontent.com/OpenLiberty/open-liberty-operator/master/deploy/releases/${settings.version}/openliberty-app-cluster-rbac.yaml | sed -e "s/OPEN_LIBERTY_OPERATOR_NAMESPACE/${OPERATOR_NAMESPACE}/"  | kubectl apply -f -
-          curl -L https://raw.githubusercontent.com/OpenLiberty/open-liberty-operator/master/deploy/releases/${settings.version}/openliberty-app-operator.yaml  | sed -e "s/OPEN_LIBERTY_WATCH_NAMESPACE/${OPERATOR_NAMESPACE}/"  | kubectl apply -n ${OPERATOR_NAMESPACE} -f -
-          kubectl apply -f https://raw.githubusercontent.com/jelastic-jps/kubernetes/v1.21.4/addons/open-liberty.yaml
+          # API version changes
+          if verlt ${settings.version} 0.8.0; then
+            kubectl apply -f https://raw.githubusercontent.com/OpenLiberty/open-liberty-operator/master/deploy/releases/${settings.version}/openliberty-app-crd.yaml
+            curl -L https://raw.githubusercontent.com/OpenLiberty/open-liberty-operator/master/deploy/releases/${settings.version}/openliberty-app-cluster-rbac.yaml | sed -e "s/OPEN_LIBERTY_OPERATOR_NAMESPACE/${OPERATOR_NAMESPACE}/"  | kubectl apply -f -
+            curl -L https://raw.githubusercontent.com/OpenLiberty/open-liberty-operator/master/deploy/releases/${settings.version}/openliberty-app-operator.yaml  | sed -e "s/OPEN_LIBERTY_WATCH_NAMESPACE/${OPERATOR_NAMESPACE}/"  | kubectl apply -n ${OPERATOR_NAMESPACE} -f -
+            kubectl apply -f https://raw.githubusercontent.com/jelastic-jps/kubernetes/v1.21.6/addons/open-liberty.yaml
+          else
+            kubectl apply -f https://raw.githubusercontent.com/OpenLiberty/open-liberty-operator/main/deploy/releases/${settings.version}/kubectl/openliberty-app-crd.yaml
+            curl -L https://raw.githubusercontent.com/OpenLiberty/open-liberty-operator/main/deploy/releases/${settings.version}/kubectl/openliberty-app-rbac-watch-another.yaml | sed -e "s/OPEN_LIBERTY_OPERATOR_NAMESPACE/${OPERATOR_NAMESPACE}/" | sed -e "s/OPEN_LIBERTY_WATCH_NAMESPACE/${OPERATOR_NAMESPACE}/" | kubectl apply -f -
+            curl -L https://raw.githubusercontent.com/OpenLiberty/open-liberty-operator/main/deploy/releases/${settings.version}/kubectl/openliberty-app-operator.yaml | sed -e "s/OPEN_LIBERTY_WATCH_NAMESPACE/${OPERATOR_NAMESPACE}/" | kubectl apply -n ${OPERATOR_NAMESPACE} -f -
+            kubectl apply -f https://raw.githubusercontent.com/jelastic-jps/kubernetes/v1.22.6/addons/open-liberty.yaml
+          fi
   - script: |
       var resp = jelastic.env.control.GetEnvInfo("${settings.envName}", session);
       return {result:0, startPage: "http" + (resp.env.sslstate ? "s" : "") + "://" + resp.env.domain}      
