@@ -62,6 +62,7 @@ onInstall:
       displayName: ${settings.displayName}
       ssl: ${response.ssl}
       region: ${settings.region}
+      ownerUid: ${settings.ownerUid:[user.uid]}
       settings:
         topo: ${settings.topo}
         deploy: cmd
