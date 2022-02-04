@@ -24,6 +24,17 @@ for (var i = 0; i < tree.length; i++) {
 }  
 jps.settings.fields[0].values = versions;
 jps.settings.fields[0]["default"] = def;
+
+// collaboration requirements
+if (parseInt('${fn.compareEngine(7.0)}', 10) >= 0) {
+  jps.settings.fields.push({
+    "type": "owner",
+    "name": "ownerUid",
+    "caption": "Owner"
+  });
+  jps.settings.fields[5].dependsOn = "ownerUid";
+}
+
 return jps;
 
 function getUrl(arr, path){
