@@ -9,6 +9,7 @@ homepage: https://openliberty.io/
 onBeforeInit: scripts/onbeforeinit.js
 
 settings:
+  onBeforeInit: return settings;
   fields:
     - name: version
       type: list
@@ -65,6 +66,7 @@ onInstall:
       ownerUid: ${settings.ownerUid:[user.uid]}
       settings:
         topo: ${settings.topo}
+        ownerUid: ${settings.ownerUid:[user.uid]}
         deploy: cmd
         cmd: |-
           verlte() { [  "$1" = "`echo -e "$1\n$2" | sort -V | head -n1`" ]; }
