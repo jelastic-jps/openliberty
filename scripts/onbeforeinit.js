@@ -20,7 +20,7 @@ var tree = eval("(" + exec(new GetMethod(url)).response + ")").tree;
 var versions = {}, def = "";
 for (var i = 0; i < tree.length; i++) {
   if (def < tree[i].path && tree[i].path != "daily") def = tree[i].path;
-  versions[tree[i].path] = tree[i].path;
+  if (tree[i].path > "0.8.0") versions[tree[i].path] = tree[i].path;
 }  
 jps.settings.fields[0].values = versions;
 jps.settings.fields[0]["default"] = def;
