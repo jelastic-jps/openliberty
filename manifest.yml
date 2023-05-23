@@ -28,7 +28,7 @@ settings:
           - value: 1-prod
             caption: '<b>Production:</b> multi control-plane (3) with API balancers (2+) and scalable workers (2+)'
       default: 0-dev
-      
+
     - caption: Display Name
       type: string
       name: displayName
@@ -36,7 +36,7 @@ settings:
       required: true
       width: 400
 
-    - caption: Env Name  
+    - caption: Env Name
       type: envname
       name: envName
       dependsOn: region
@@ -57,7 +57,7 @@ settings:
 onInstall:
   - script: return {result:0, envGroups:eval('(' + MANIFEST + ')').envGroups, ssl:!!jelastic.billing.account.GetQuotas('environment.jelasticssl.enabled').array[0].value}    
   - install: 
-      jps: https://raw.githubusercontent.com/jelastic-jps/kubernetes/v1.21.6/manifest.jps
+      jps: https://raw.githubusercontent.com/jelastic-jps/kubernetes/v1.25.4/manifest.jps
       envName: ${settings.envName}
       envGroups: ${response.envGroups}
       displayName: ${settings.displayName}
@@ -74,24 +74,34 @@ onInstall:
 
           OPERATOR_NAMESPACE=open-liberty
           kubectl create namespace "$OPERATOR_NAMESPACE"
+          kubectl apply --server-side -f https://raw.githubusercontent.com/OpenLiberty/open-liberty-operator/main/deploy/releases/${settings.version}/kubectl/openliberty-app-crd.yaml
+          curl -L https://raw.githubusercontent.com/OpenLiberty/open-liberty-operator/main/deploy/releases/${settings.version}/kubectl/openliberty-app-rbac-watch-another.yaml | sed -e "s/OPEN_LIBERTY_OPERATOR_NAMESPACE/${OPERATOR_NAMESPACE}/" | sed -e "s/OPEN_LIBERTY_WATCH_NAMESPACE/${OPERATOR_NAMESPACE}/" | kubectl apply -f -
+          curl -L https://raw.githubusercontent.com/OpenLiberty/open-liberty-operator/main/deploy/releases/${settings.version}/kubectl/openliberty-app-operator.yaml | sed -e "s/OPEN_LIBERTY_WATCH_NAMESPACE/${OPERATOR_NAMESPACE}/" | kubectl apply -n ${OPERATOR_NAMESPACE} -f -
+
           # API version changes
-          if verlt ${settings.version} 0.8.0; then
-            kubectl apply -f https://raw.githubusercontent.com/OpenLiberty/open-liberty-operator/master/deploy/releases/${settings.version}/openliberty-app-crd.yaml
-            curl -L https://raw.githubusercontent.com/OpenLiberty/open-liberty-operator/master/deploy/releases/${settings.version}/openliberty-app-cluster-rbac.yaml | sed -e "s/OPEN_LIBERTY_OPERATOR_NAMESPACE/${OPERATOR_NAMESPACE}/"  | kubectl apply -f -
-            curl -L https://raw.githubusercontent.com/OpenLiberty/open-liberty-operator/master/deploy/releases/${settings.version}/openliberty-app-operator.yaml  | sed -e "s/OPEN_LIBERTY_WATCH_NAMESPACE/${OPERATOR_NAMESPACE}/"  | kubectl apply -n ${OPERATOR_NAMESPACE} -f -
-            kubectl apply -f https://raw.githubusercontent.com/jelastic-jps/kubernetes/v1.21.6/addons/open-liberty.yaml
-          else
-            kubectl apply -f https://raw.githubusercontent.com/OpenLiberty/open-liberty-operator/main/deploy/releases/${settings.version}/kubectl/openliberty-app-crd.yaml
-            curl -L https://raw.githubusercontent.com/OpenLiberty/open-liberty-operator/main/deploy/releases/${settings.version}/kubectl/openliberty-app-rbac-watch-another.yaml | sed -e "s/OPEN_LIBERTY_OPERATOR_NAMESPACE/${OPERATOR_NAMESPACE}/" | sed -e "s/OPEN_LIBERTY_WATCH_NAMESPACE/${OPERATOR_NAMESPACE}/" | kubectl apply -f -
-            curl -L https://raw.githubusercontent.com/OpenLiberty/open-liberty-operator/main/deploy/releases/${settings.version}/kubectl/openliberty-app-operator.yaml | sed -e "s/OPEN_LIBERTY_WATCH_NAMESPACE/${OPERATOR_NAMESPACE}/" | kubectl apply -n ${OPERATOR_NAMESPACE} -f -
+          if verlt ${settings.version} 1.2.0; then
+            # application
             kubectl apply -f https://raw.githubusercontent.com/jelastic-jps/kubernetes/v1.22.6/addons/open-liberty.yaml
+          else
+            # cert-manager
+            certmanager_version=1.10.1
+            helm repo add jetstack https://charts.jetstack.io
+            helm repo update
+            helm install cert-manager --create-namespace --namespace cert-manager --version v${certmanager_version} jetstack/cert-manager --set installCRDs=true
+            wait-deployment.sh cert-manager cert-manager 1 720
+            for issuer_name in "le-production-issuer" "le-staging-issuer"; do
+                wget "${baseUrl}/addons/cert-manager/${issuer_name}.yaml" -O "/tmp/${issuer_name}.yaml"
+                sed -i 's/user@example\.com/${user.email}/g' "/tmp/${issuer_name}.yaml"
+                kubectl create -f "/tmp/${issuer_name}.yaml"
+            done
+            # application
+            kubectl apply -f https://raw.githubusercontent.com/jelastic-jps/kubernetes/v1.25.4/addons/open-liberty.yaml
           fi
   - script: |
       var resp = jelastic.env.control.GetEnvInfo("${settings.envName}", session);
-      return {result:0, startPage: "http" + (resp.env.sslstate ? "s" : "") + "://" + resp.env.domain}      
+      return {result:0, startPage: "http" + (resp.env.sslstate ? "s" : "") + "://" + resp.env.domain}
   - setGlobals:
-        startPage: ${response.startPage}  
+        startPage: ${response.startPage}
 startPage: ${globals.startPage}
 success: |
-  Enjoy your Open Liberty at [${globals.startPage}](${globals.startPage}) 
-        
+  Enjoy your Open Liberty at [${globals.startPage}](${globals.startPage})
